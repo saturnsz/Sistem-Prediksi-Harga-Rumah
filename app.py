@@ -56,8 +56,16 @@ html, body,
 }
 
 /* hide streamlit chrome */
-#MainMenu, footer, [data-testid="stToolbar"],
-[data-testid="stDecoration"], header { display: none !important; }
+#MainMenu, footer,
+[data-testid="stDecoration"],
+[data-testid="stElementToolbar"] { display: none !important; }
+[data-testid="stToolbar"] { right: 2rem !important; }
+
+/* make header visible so hamburger shows */
+header, [data-testid="stHeader"] { 
+    background: #0a0a0a !important; 
+    z-index: 999999 !important; 
+}
 
 /* main block */
 .main .block-container {
@@ -65,66 +73,146 @@ html, body,
     max-width: 100% !important;
 }
 
-/* ── SIDEBAR ── */
+/* ════════════════════════════════
+   SIDEBAR
+   ════════════════════════════════ */
 [data-testid="stSidebar"] {
-    background: #0f0f0f !important;
-    border-right: 1px solid #1c1c1c !important;
-    width: 210px !important;
-    min-width: 210px !important;
-    max-width: 210px !important;
+    background: #0d0d0d !important;
+    border-right: 1px solid #1a1a1a !important;
 }
-[data-testid="stSidebar"] * {
+
+/* All sidebar text inherits Inter */
+[data-testid="stSidebar"] {
     font-family: 'Inter', sans-serif !important;
+    color: #555 !important;
 }
-/* sidebar radio label */
-[data-testid="stSidebar"] .stRadio > label {
-    display: none;
+/* Restore icon fonts just in case */
+[data-testid="stSidebar"] .material-symbols-rounded {
+    font-family: "Material Symbols Rounded" !important;
 }
-[data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+
+/* ── Hide the "Menu" label above radio ── */
+[data-testid="stSidebar"] .stRadio > div:first-child {
+    display: none !important;
+}
+
+/* ── Radio group: remove gap ── */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] {
     gap: 0 !important;
+    flex-direction: column !important;
 }
-[data-testid="stSidebar"] .stRadio label {
+
+/* ── Individual radio row ── */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
     display: flex !important;
     align-items: center !important;
-    padding: 10px 20px !important;
+    gap: 0 !important;
+    padding: 12px 24px !important;
     border-radius: 0 !important;
+    margin: 0 !important;
     font-size: .82rem !important;
     font-weight: 400 !important;
-    color: #666 !important;
+    color: #555 !important;
     letter-spacing: .3px !important;
-    cursor: pointer;
+    cursor: pointer !important;
     border-left: 2px solid transparent !important;
-    transition: all .15s;
+    background: transparent !important;
+    transition: color .15s, background .15s !important;
+    width: 100% !important;
 }
-[data-testid="stSidebar"] .stRadio label:hover {
-    color: #ccc !important;
-    background: #161616 !important;
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:hover {
+    color: #bbb !important;
+    background: #141414 !important;
 }
-[data-testid="stSidebar"] .stRadio input:checked ~ div {
-    color: #fff !important;
+
+/* ── Hide the circular radio dot (the Streamlit default indicator) ── */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:first-child {
+    display: none !important;
+}
+
+/* ── The text span inside the label ── */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:last-child,
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:last-child p {
+    font-size: .82rem !important;
+    color: inherit !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ── Selected state: override via aria-checked on parent ── */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) {
+    color: #e0e0e0 !important;
     border-left: 2px solid #3a7bd5 !important;
-    background: #161616 !important;
+    background: #141414 !important;
+}
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) > div:last-child,
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) > div:last-child p {
+    color: #e0e0e0 !important;
+    font-weight: 500 !important;
+}
+
+/* ── Hamburger / collapse button ── */
+[data-testid="collapsedControl"],
+button[kind="header"],
+[data-testid="stHeader"] button,
+[data-testid="stToolbar"] button,
+[data-testid="stSidebarCollapsedControl"] {
+    color: #ffffff !important;
+    background-color: transparent !important;
+}
+[data-testid="collapsedControl"] svg,
+button[kind="header"] svg,
+[data-testid="stHeader"] button svg,
+[data-testid="stToolbar"] button svg,
+[data-testid="stSidebarCollapsedControl"] svg {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+    color: #ffffff !important;
+}
+
+/* ── Sidebar toggle arrow (expand when collapsed) ── */
+.st-emotion-cache-pb6fr7,
+[data-testid="stSidebarNavCollapseIcon"] {
+    color: #555 !important;
 }
 
 /* scrollbar */
 ::-webkit-scrollbar { width: 4px; background: #0a0a0a; }
-::-webkit-scrollbar-thumb { background: #1c1c1c; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+
+/* removed custom media queries to let Streamlit handle mobile responsiveness natively */
 </style>
 """, unsafe_allow_html=True)
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
+    # Brand header
     st.markdown("""
-    <div style="padding: 28px 20px 20px;">
-        <div style="font-size:.6rem; letter-spacing:3px; text-transform:uppercase;
-                    color:#333; margin-bottom:10px;">Properti</div>
-        <div style="font-size:1.1rem; font-weight:700; color:#fff; line-height:1.3;
-                    letter-spacing:-.3px;">
-            Taksir Rumah
-        </div>
-        <div style="width:24px; height:2px; background:#3a7bd5; margin-top:10px;"></div>
+    <div style="padding: 32px 24px 24px;">
+        <div style="
+            font-size: .58rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #a0a0a0;
+            margin-bottom: 8px;
+        ">Sistem Prediksi</div>
+        <div style="
+            font-size: 1rem;
+            font-weight: 700;
+            color: #e0e0e0;
+            line-height: 1.3;
+            letter-spacing: -.2px;
+        ">Taksir Rumah</div>
+        <div style="width:20px; height:2px; background:#3a7bd5; margin-top:10px;"></div>
     </div>
-    <div style="height:1px; background:#1c1c1c; margin: 0 20px 12px;"></div>
+    <div style="height:1px; background:#1a1a1a; margin: 0 24px 16px;"></div>
+    <div style="
+        font-size: .55rem;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: #a0a0a0;
+        padding: 0 24px 10px;
+    ">Menu</div>
     """, unsafe_allow_html=True)
 
     halaman = st.radio(
@@ -133,12 +221,16 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+    # Footer — NOT absolute, flows naturally below radio
     st.markdown("""
-    <div style="position:absolute; bottom:24px; left:20px; right:20px;">
-        <div style="height:1px; background:#1c1c1c; margin-bottom:16px;"></div>
-        <div style="font-size:.68rem; color:#2a2a2a; line-height:1.8;">
+    <div style="
+        margin-top: 40px;
+        padding: 16px 24px;
+        border-top: 1px solid #1a1a1a;
+    ">
+        <div style="font-size:.62rem; color:#999999; line-height:1.9;">
             Random Forest Model<br>
-            Data Properti DIY
+            Data Properti Yogyakarta
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -175,14 +267,14 @@ if halaman == "Beranda":
             background-image: url('data:image/jpeg;base64,{bg1_b64}');
             background-size: cover;
             background-position: center 40%;
-            filter: brightness(.35) saturate(.6);
+            filter: brightness(0.65) saturate(0.8);
         "></div>
         <!-- gradient overlay bottom fade -->
         <div style="
             position: absolute; inset: 0;
             background: linear-gradient(to bottom,
-                rgba(10,10,10,0) 0%,
-                rgba(10,10,10,.7) 65%,
+                rgba(10,10,10,0.2) 0%,
+                rgba(10,10,10,0.8) 75%,
                 rgba(10,10,10,1) 100%
             );
         "></div>
@@ -298,7 +390,7 @@ if halaman == "Beranda":
             <div>
                 <div style="font-size:.85rem; font-weight:600; color:#ccc;
                             margin-bottom:4px;">{title}</div>
-                <div style="font-size:.78rem; color:#4a4a4a; line-height:1.7;">{desc}</div>
+                <div style="font-size:.78rem; color:#aaaaaa; line-height:1.7;">{desc}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -360,7 +452,12 @@ else:
     # ── Hero strip ────────────────────────────────────────────────────────────
     st.markdown(f"""
     <style>
-    [data-testid="stAppViewContainer"] {{ background: #0a0a0a !important; }}
+    [data-testid="stAppViewContainer"] {{ 
+        background-image: linear-gradient(rgba(10, 10, 10, 0.82), rgba(10, 10, 10, 0.95)), url('data:image/jpeg;base64,{bg2_b64}') !important;
+        background-size: cover !important;
+        background-attachment: fixed !important;
+        background-position: center !important;
+    }}
     .main .block-container {{ padding: 0 !important; max-width: 100% !important; }}
 
     /* input style */
@@ -426,26 +523,10 @@ else:
 
     <div style="
         position: relative;
-        width: 100%; height: 220px;
-        overflow: hidden;
+        width: 100%; height: 180px;
         display: flex; align-items: flex-end;
         padding: 36px 64px;
     ">
-        <div style="
-            position: absolute; inset: 0;
-            background-image: url('data:image/jpeg;base64,{bg2_b64}');
-            background-size: cover;
-            background-position: center 30%;
-            filter: brightness(.2) saturate(.4);
-        "></div>
-        <div style="
-            position: absolute; inset: 0;
-            background: linear-gradient(to bottom,
-                rgba(10,10,10,.3) 0%,
-                rgba(10,10,10,.85) 70%,
-                rgba(10,10,10,1) 100%
-            );
-        "></div>
         <div style="position:relative; z-index:1;">
             <div style="font-size:.6rem; letter-spacing:3px; text-transform:uppercase;
                         color:#3a7bd5; margin-bottom:10px;">Prediksi Harga</div>
@@ -459,8 +540,8 @@ else:
 
     # ── Body ──────────────────────────────────────────────────────────────────
     st.markdown("""
-    <div style="background:#0a0a0a; padding: 8px 64px 64px;">
-    <p style="font-size:.8rem; color:#3a3a3a; margin-bottom:36px;">
+    <div style="background:transparent; padding: 8px 64px 64px;">
+    <p style="font-size:.8rem; color:#b3b3b3; margin-bottom:36px;">
         Isi spesifikasi properti untuk mendapatkan estimasi harga pasar.
     </p>
     </div>
@@ -473,7 +554,7 @@ else:
         # Group: Lokasi
         st.markdown("""
         <div style="font-size:.6rem; letter-spacing:2.5px; text-transform:uppercase;
-                    color:#2a2a2a; margin-bottom:12px; margin-top:8px;">Lokasi</div>
+                    color:#a0a0a0; margin-bottom:12px; margin-top:8px;">Lokasi</div>
         """, unsafe_allow_html=True)
 
         lokasi_input = st.selectbox(
@@ -487,7 +568,7 @@ else:
         st.markdown("""
         <div style="height:20px;"></div>
         <div style="font-size:.6rem; letter-spacing:2.5px; text-transform:uppercase;
-                    color:#2a2a2a; margin-bottom:12px;">Kamar & Garasi</div>
+                    color:#a0a0a0; margin-bottom:12px;">Kamar & Garasi</div>
         """, unsafe_allow_html=True)
 
         c1, c2 = st.columns(2, gap="medium")
@@ -505,7 +586,7 @@ else:
         st.markdown("""
         <div style="height:20px;"></div>
         <div style="font-size:.6rem; letter-spacing:2.5px; text-transform:uppercase;
-                    color:#2a2a2a; margin-bottom:12px;">Luas</div>
+                    color:#a0a0a0; margin-bottom:12px;">Luas</div>
         """, unsafe_allow_html=True)
 
         c3, c4 = st.columns(2, gap="medium")
@@ -528,7 +609,7 @@ else:
             border-radius: 2px;
             background: #0d0d0d;
             font-size: .72rem;
-            color: #333;
+            color: #b3b3b3;
             display: flex; gap: 20px;
         ">
             <span>Rasio Bangunan: <strong style="color:#3a5a8a;">{rasio:.2%}</strong></span>
@@ -578,13 +659,13 @@ else:
                             color:#ffffff; letter-spacing:-.5px;
                             line-height:1.15; margin-bottom:6px;
                         ">{harga_str}</div>
-                        <div style="font-size:.75rem; color:#333;">
+                        <div style="font-size:.75rem; color:#b3b3b3;">
                             {harga_pred:,.0f} Juta Rupiah
                         </div>
                         <div style="
                             margin-top:20px; padding-top:16px;
                             border-top:1px solid #161616;
-                            font-size:.72rem; color:#2e2e2e; line-height:1.7;
+                            font-size:.72rem; color:#999999; line-height:1.7;
                         ">
                             Estimasi bersifat indikatif berdasarkan model machine learning.
                             Nilai aktual dapat berbeda tergantung kondisi pasar.
@@ -610,14 +691,14 @@ else:
                             <div style="background:#0d0d0d;border:1px solid #161616;
                                         border-radius:4px;padding:12px 14px;">
                                 <div style="font-size:.6rem;text-transform:uppercase;
-                                            letter-spacing:1px;color:#2a2a2a;margin-bottom:4px;">{label}</div>
+                                            letter-spacing:1px;color:#a0a0a0;margin-bottom:4px;">{label}</div>
                                 <div style="font-size:.82rem;font-weight:600;color:#8aabdc;">{val}</div>
                             </div>"""
                         rows_html += "</div>"
 
                     st.markdown(f"""
                     <div style="font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;
-                                color:#2a2a2a;margin-bottom:10px;">Detail Input</div>
+                                color:#a0a0a0;margin-bottom:10px;">Detail Input</div>
                     {rows_html}
                     """, unsafe_allow_html=True)
 
@@ -635,7 +716,7 @@ else:
             ">
                 <div style="width:32px; height:2px; background:#1c1c1c;
                             margin: 0 auto 20px;"></div>
-                <div style="font-size:.72rem; color:#2a2a2a; line-height:1.8;">
+                <div style="font-size:.72rem; color:#a0a0a0; line-height:1.8;">
                     Isi formulir dan klik<br>
                     <span style="color:#3a5a8a; font-weight:500;">Prediksi Harga</span><br>
                     untuk melihat estimasi.
@@ -644,7 +725,7 @@ else:
 
             <div style="margin-top:24px;">
                 <div style="font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;
-                            color:#2a2a2a;margin-bottom:12px;">Panduan</div>
+                            color:#a0a0a0;margin-bottom:12px;">Panduan</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -664,6 +745,6 @@ else:
                     <div style="font-size:.62rem;font-weight:600;color:#1e3458;
                                 min-width:56px;text-transform:uppercase;
                                 letter-spacing:.5px;padding-top:1px;">{label}</div>
-                    <div style="font-size:.76rem;color:#333;line-height:1.7;">{desc}</div>
+                    <div style="font-size:.76rem;color:#b3b3b3;line-height:1.7;">{desc}</div>
                 </div>
                 """, unsafe_allow_html=True)
