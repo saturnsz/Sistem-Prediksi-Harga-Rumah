@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import os
 import base64
+import re
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -32,6 +35,55 @@ def load_model():
 
 encoder, model = load_model()
 LOKASI_LIST = list(encoder.classes_)
+
+# ─── LOAD & CLEAN CSV DATA ────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False)
+def load_data():
+    csv_path = os.path.join(BASE_DIR, "rumah123_yogya_unfiltered.csv")
+    df = pd.read_csv(csv_path)
+
+    def parse_price(p):
+        """Convert price string like 'Rp 1,79 Miliar' / 'Rp 170 Juta' → float (juta)."""
+        if not isinstance(p, str):
+            return None
+        p = p.replace("Rp", "").replace(" ", "").replace(".", "").replace(",", ".")
+        p_lower = p.lower()
+        try:
+            if "miliar" in p_lower:
+                num = float(re.sub(r"[^0-9.]", "", p))
+                return num * 1000
+            elif "juta" in p_lower:
+                num = float(re.sub(r"[^0-9.]", "", p))
+                return num
+        except Exception:
+            return None
+        return None
+
+    def parse_area(a):
+        """Convert area string like '120 m²' → float."""
+        if not isinstance(a, str):
+            return None
+        cleaned = re.sub(r"[^0-9.]", "", a)
+        try:
+            return float(cleaned)
+        except Exception:
+            return None
+
+    df["Harga_Juta"]       = df["price"].apply(parse_price)
+    df["Luas_Tanah_m2"]    = df["surface_area"].apply(parse_area)
+    df["Luas_Bangunan_m2"] = df["building_area"].apply(parse_area)
+    df["Lokasi"]           = df["listing-location"].astype(str).str.strip()
+    df["Kamar_Tidur"]      = pd.to_numeric(df["bed"],     errors="coerce")
+    df["Kamar_Mandi"]      = pd.to_numeric(df["bath"],    errors="coerce")
+    df["Garasi"]           = pd.to_numeric(df["carport"], errors="coerce")
+
+    df_clean = df.dropna(subset=["Harga_Juta", "Luas_Tanah_m2", "Luas_Bangunan_m2", "Lokasi"]).copy()
+    # Remove extreme outliers (> 99th percentile price)
+    q99 = df_clean["Harga_Juta"].quantile(0.99)
+    df_clean = df_clean[df_clean["Harga_Juta"] <= q99]
+    return df_clean
+
+df_data = load_data()
 
 # ─── FORMAT HARGA ─────────────────────────────────────────────────────────────
 def format_harga(nilai: float) -> str:
@@ -107,22 +159,22 @@ header, [data-testid="stHeader"] {
     display: flex !important;
     align-items: center !important;
     gap: 0 !important;
-    padding: 12px 24px !important;
+    padding: 14px 24px !important;
     border-radius: 0 !important;
     margin: 0 !important;
-    font-size: .82rem !important;
-    font-weight: 400 !important;
-    color: #555 !important;
+    font-size: .95rem !important;
+    font-weight: 500 !important;
+    color: #a0a0a0 !important;
     letter-spacing: .3px !important;
     cursor: pointer !important;
-    border-left: 2px solid transparent !important;
+    border-left: 3px solid transparent !important;
     background: transparent !important;
     transition: color .15s, background .15s !important;
     width: 100% !important;
 }
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:hover {
-    color: #bbb !important;
-    background: #141414 !important;
+    color: #ffffff !important;
+    background: #181818 !important;
 }
 
 /* ── Hide the circular radio dot (the Streamlit default indicator) ── */
@@ -133,7 +185,7 @@ header, [data-testid="stHeader"] {
 /* ── The text span inside the label ── */
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:last-child,
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:last-child p {
-    font-size: .82rem !important;
+    font-size: .95rem !important;
     color: inherit !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -141,14 +193,14 @@ header, [data-testid="stHeader"] {
 
 /* ── Selected state: override via aria-checked on parent ── */
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) {
-    color: #e0e0e0 !important;
-    border-left: 2px solid #3a7bd5 !important;
-    background: #141414 !important;
+    color: #ffffff !important;
+    border-left: 3px solid #4a90e2 !important;
+    background: #1e1e1e !important;
 }
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) > div:last-child,
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) > div:last-child p {
-    color: #e0e0e0 !important;
-    font-weight: 500 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
 }
 
 /* ── Hamburger / collapse button ── */
@@ -190,34 +242,36 @@ with st.sidebar:
     st.markdown("""
     <div style="padding: 32px 24px 24px;">
         <div style="
-            font-size: .58rem;
-            letter-spacing: 3px;
+            font-size: .7rem;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            color: #a0a0a0;
+            color: #4a90e2;
+            font-weight: 600;
             margin-bottom: 8px;
         ">Sistem Prediksi</div>
         <div style="
-            font-size: 1rem;
+            font-size: 1.25rem;
             font-weight: 700;
-            color: #e0e0e0;
+            color: #ffffff;
             line-height: 1.3;
             letter-spacing: -.2px;
         ">Taksir Rumah</div>
-        <div style="width:20px; height:2px; background:#3a7bd5; margin-top:10px;"></div>
+        <div style="width:28px; height:3px; background:#4a90e2; margin-top:12px; border-radius:2px;"></div>
     </div>
-    <div style="height:1px; background:#1a1a1a; margin: 0 24px 16px;"></div>
+    <div style="height:1px; background:#222; margin: 0 24px 20px;"></div>
     <div style="
-        font-size: .55rem;
-        letter-spacing: 2.5px;
+        font-size: .7rem;
+        letter-spacing: 2px;
         text-transform: uppercase;
-        color: #a0a0a0;
-        padding: 0 24px 10px;
+        color: #b0b0b0;
+        font-weight: 600;
+        padding: 0 24px 12px;
     ">Menu</div>
     """, unsafe_allow_html=True)
 
     halaman = st.radio(
         "Menu",
-        options=["Beranda", "Prediksi Harga"],
+        options=["Beranda", "Prediksi Harga", "Dashboard Data"],
         label_visibility="collapsed",
     )
 
@@ -225,10 +279,10 @@ with st.sidebar:
     st.markdown("""
     <div style="
         margin-top: 40px;
-        padding: 16px 24px;
-        border-top: 1px solid #1a1a1a;
+        padding: 20px 24px;
+        border-top: 1px solid #222;
     ">
-        <div style="font-size:.62rem; color:#999999; line-height:1.9;">
+        <div style="font-size:.78rem; color:#b0b0b0; line-height:1.7; font-weight: 400;">
             Random Forest Model<br>
             Data Properti Yogyakarta
         </div>
@@ -447,7 +501,7 @@ if halaman == "Beranda":
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE 2 — PREDIKSI
 # ══════════════════════════════════════════════════════════════════════════════
-else:
+elif halaman == "Prediksi Harga":
 
     # ── Hero strip ────────────────────────────────────────────────────────────
     st.markdown(f"""
@@ -748,3 +802,328 @@ else:
                     <div style="font-size:.76rem;color:#b3b3b3;line-height:1.7;">{desc}</div>
                 </div>
                 """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 3 — DASHBOARD DATA VISUAL
+# ══════════════════════════════════════════════════════════════════════════════
+else:  # halaman == "Dashboard Data"
+
+    # ── Plotly dark theme config shared across all charts ─────────────────────
+    PLOTLY_LAYOUT = dict(
+        paper_bgcolor="#111111",
+        plot_bgcolor="#111111",
+        font=dict(family="Inter, sans-serif", color="#e0e0e0", size=14),
+        title_font=dict(family="Inter, sans-serif", color="#ffffff", size=20, weight="bold"),
+        margin=dict(l=40, r=40, t=70, b=50),
+        xaxis=dict(
+            gridcolor="#222222",
+            linecolor="#333333",
+            tickfont=dict(color="#cccccc", size=13),
+            title_font=dict(color="#4a90e2", size=14),
+        ),
+        yaxis=dict(
+            gridcolor="#222222",
+            linecolor="#333333",
+            tickfont=dict(color="#cccccc", size=13),
+            title_font=dict(color="#4a90e2", size=14),
+        ),
+        coloraxis_colorbar=dict(
+            tickfont=dict(color="#cccccc", size=13),
+            title_font=dict(color="#e0e0e0", size=13),
+            bgcolor="#161616",
+            bordercolor="#333333",
+        ),
+        legend=dict(
+            bgcolor="#161616",
+            bordercolor="#333333",
+            font=dict(color="#e0e0e0", size=13),
+        ),
+        hoverlabel=dict(
+            bgcolor="#1c1c1c",
+            bordercolor="#4a90e2",
+            font=dict(color="#ffffff", size=13, family="Inter, sans-serif"),
+        ),
+    )
+
+    # ── Page CSS (inherits global dark theme) ─────────────────────────────────
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] { background: #0a0a0a !important; }
+    .main .block-container { padding: 0 !important; max-width: 100% !important; }
+
+    /* Plotly chart containers */
+    .stPlotlyChart {
+        border: 1px solid #222222 !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
+        background: #111111 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── Hero strip ────────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="
+        padding: 40px 64px 32px;
+        border-bottom: 1px solid #1a1a1a;
+        background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%);
+    ">
+        <div style="font-size:.85rem; letter-spacing:2.5px; text-transform:uppercase;
+                    color:#4a90e2; font-weight:700; margin-bottom:12px;">Eksplorasi Data</div>
+        <h1 style="font-size:2.2rem; font-weight:800; color:#ffffff;
+                   letter-spacing:-.3px; margin:0 0 10px;">Dashboard Data Visual</h1>
+        <p style="font-size:1rem; color:#c0c0c0; margin:0; max-width:640px; line-height:1.8;">
+            Analisis visual data properti Yogyakarta &mdash; distribusi harga, sebaran lokasi,
+            dan pola pasar properti.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div style='padding: 28px 64px;'>", unsafe_allow_html=True)
+
+    # ── KPI Summary Cards ─────────────────────────────────────────────────────
+    total_listing  = len(df_data)
+    avg_price      = df_data["Harga_Juta"].mean()
+    median_price   = df_data["Harga_Juta"].median()
+    total_lokasi   = df_data["Lokasi"].nunique()
+    max_price      = df_data["Harga_Juta"].max()
+    min_price      = df_data["Harga_Juta"].min()
+
+    kpi_data = [
+        ("Total Listing",   f"{total_listing:,}",         "Properti tercatat"),
+        ("Rata-rata Harga", format_harga(avg_price),       "Rata-rata pasar"),
+        ("Median Harga",    format_harga(median_price),    "Nilai tengah"),
+        ("Total Lokasi",    f"{total_lokasi}",              "Kecamatan/wilayah"),
+        ("Harga Tertinggi", format_harga(max_price),       "Tertinggi (p99)"),
+        ("Harga Terendah",  format_harga(min_price),       "Terendah di data"),
+    ]
+
+    kpi_cols_r1 = st.columns(3, gap="small")
+    kpi_cols_r2 = st.columns(3, gap="small")
+    kpi_cols = kpi_cols_r1 + kpi_cols_r2
+    for col, (label, value, sub) in zip(kpi_cols, kpi_data):
+        with col:
+            st.markdown(f"""
+            <div style="
+                border: 1px solid #222222;
+                border-top: 3px solid #4a90e2;
+                border-radius: 8px;
+                padding: 20px 20px 16px;
+                background: #111111;
+                margin-bottom: 12px;
+            ">
+                <div style="font-size:.8rem; text-transform:uppercase; letter-spacing:1.5px;
+                            color:#b0b0b0; font-weight:700; margin-bottom:10px;">{label}</div>
+                <div style="font-size:1.4rem; font-weight:800; color:#ffffff;
+                            letter-spacing:-.3px; margin-bottom:6px; line-height:1.2;">{value}</div>
+                <div style="font-size:.85rem; color:#80b3ff; font-weight:600;">{sub}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ── Divider ───────────────────────────────────────────────────────────────
+    st.markdown("<div style='height:36px;'></div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="font-size:.9rem; letter-spacing:2.5px; text-transform:uppercase;
+                color:#4a90e2; font-weight:800; margin-bottom:20px;">Visualisasi Data</div>
+    """, unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CHART 1 — Rata-rata Harga per Lokasi (Top 10)
+    # ══════════════════════════════════════════════════════════════════════════
+    df_avg_price = (
+        df_data.groupby("Lokasi")["Harga_Juta"]
+        .mean()
+        .reset_index()
+        .sort_values("Harga_Juta", ascending=False)
+        .head(10)
+    )
+
+    fig_avg = px.bar(
+        df_avg_price,
+        x="Harga_Juta",
+        y="Lokasi",
+        orientation="h",
+        title="Top 10 Lokasi di Jogja — Rata-rata Harga Tertinggi",
+        labels={"Harga_Juta": "Rata-rata Harga (Juta Rp)", "Lokasi": "Kecamatan / Lokasi"},
+        color="Harga_Juta",
+        color_continuous_scale="Viridis",
+        text_auto=".2s",
+    )
+    fig_avg.update_traces(
+        textfont=dict(color="#ffffff", size=12, family="Inter"),
+        textposition="inside",
+        marker_line_width=0,
+        hovertemplate="<b>%{y}</b><br>Rata-rata: Rp %{x:,.1f} Juta<extra></extra>",
+    )
+    fig_avg.update_layout(**PLOTLY_LAYOUT)
+    fig_avg.update_layout(
+        title=dict(font=dict(size=18, weight="bold")),
+        height=420,
+        yaxis=dict(autorange="reversed", tickfont=dict(color="#e0e0e0", size=12)),
+        xaxis=dict(tickfont=dict(color="#cccccc", size=12)),
+        margin=dict(l=200, r=40, t=70, b=50),
+    )
+    fig_avg.update_coloraxes(showscale=False)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CHART 2 — Jumlah Listing per Lokasi (Top 10)
+    # ══════════════════════════════════════════════════════════════════════════
+    df_count = (
+        df_data["Lokasi"].value_counts()
+        .reset_index()
+        .rename(columns={"Lokasi": "Lokasi", "count": "Jumlah_Listing"})
+        .head(10)
+    )
+    # Pandas ≥2.0 value_counts() uses 'count' column name
+    if "count" in df_count.columns:
+        df_count = df_count.rename(columns={"count": "Jumlah_Listing"})
+
+    fig_count = px.bar(
+        df_count,
+        x="Jumlah_Listing",
+        y="Lokasi",
+        orientation="h",
+        title="Top 10 Lokasi di Jogja — Jumlah Properti Terbanyak",
+        labels={"Jumlah_Listing": "Jumlah Properti", "Lokasi": "Kecamatan / Lokasi"},
+        color="Jumlah_Listing",
+        color_continuous_scale="Teal",
+        text_auto=True,
+    )
+    fig_count.update_traces(
+        textfont=dict(color="#ffffff", size=12, family="Inter"),
+        textposition="inside",
+        marker_line_width=0,
+        hovertemplate="<b>%{y}</b><br>Jumlah: %{x} properti<extra></extra>",
+    )
+    fig_count.update_layout(**PLOTLY_LAYOUT)
+    fig_count.update_layout(
+        title=dict(font=dict(size=18, weight="bold")),
+        height=420,
+        yaxis=dict(autorange="reversed", tickfont=dict(color="#e0e0e0", size=12)),
+        xaxis=dict(tickfont=dict(color="#cccccc", size=12)),
+        margin=dict(l=200, r=40, t=70, b=50),
+    )
+    fig_count.update_coloraxes(showscale=False)
+
+    # ── Render Chart 1 & 2 side by side ──────────────────────────────────────
+    ch1, ch2 = st.columns(2, gap="medium")
+    with ch1:
+        st.plotly_chart(fig_avg,   use_container_width=True, config={"displayModeBar": False})
+    with ch2:
+        st.plotly_chart(fig_count, use_container_width=True, config={"displayModeBar": False})
+
+    st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CHART 3 — Distribusi Harga Keseluruhan
+    # ══════════════════════════════════════════════════════════════════════════
+    fig_dist = px.histogram(
+        df_data,
+        x="Harga_Juta",
+        nbins=50,
+        title="Distribusi Harga Properti Secara Keseluruhan",
+        labels={"Harga_Juta": "Harga (Juta Rp)", "count": "Jumlah Properti"},
+        color_discrete_sequence=["#4a90e2"],
+    )
+    fig_dist.update_traces(
+        marker_line_width=0.5,
+        marker_line_color="#0a0a0a",
+        opacity=0.85,
+        hovertemplate="Harga: Rp %{x:,.0f} Juta<br>Jumlah: %{y}<extra></extra>",
+    )
+    # Overlay median & mean lines — positioned to avoid overlap
+    fig_dist.add_vline(
+        x=median_price,
+        line_dash="dash",
+        line_color="#f5a623",
+        line_width=2,
+        annotation_text=f"  Median: {format_harga(median_price)}",
+        annotation_font_color="#f5a623",
+        annotation_font_size=12,
+        annotation_position="top right",
+        annotation_yshift=0,
+    )
+    fig_dist.add_vline(
+        x=avg_price,
+        line_dash="dot",
+        line_color="#ff6b6b",
+        line_width=2,
+        annotation_text=f"Mean: {format_harga(avg_price)}  ",
+        annotation_font_color="#ff6b6b",
+        annotation_font_size=12,
+        annotation_position="top left",
+        annotation_yshift=-22,
+    )
+    fig_dist.update_layout(**PLOTLY_LAYOUT)
+    fig_dist.update_layout(
+        yaxis_title="Jumlah Properti",
+        title=dict(font=dict(size=18, weight="bold")),
+        height=400,
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CHART 4 — Scatter: Luas Tanah vs Harga
+    # ══════════════════════════════════════════════════════════════════════════
+    df_scatter = df_data[
+        (df_data["Luas_Tanah_m2"] <= df_data["Luas_Tanah_m2"].quantile(0.97)) &
+        (df_data["Harga_Juta"]    <= df_data["Harga_Juta"].quantile(0.97))
+    ].copy()
+
+    fig_scatter = px.scatter(
+        df_scatter,
+        x="Luas_Tanah_m2",
+        y="Harga_Juta",
+        color="Harga_Juta",
+        color_continuous_scale="Plasma",
+        title="Hubungan Luas Tanah vs Harga Properti",
+        labels={
+            "Luas_Tanah_m2": "Luas Tanah (m²)",
+            "Harga_Juta":    "Harga (Juta Rp)",
+        },
+        opacity=0.7,
+        hover_data={"Lokasi": True, "Harga_Juta": True, "Luas_Tanah_m2": True},
+    )
+    fig_scatter.update_traces(
+        marker=dict(size=6, line=dict(width=0)),
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>"
+            "Luas Tanah: %{x:,.0f} m²<br>"
+            "Harga: Rp %{y:,.1f} Juta<extra></extra>"
+        ),
+    )
+    fig_scatter.update_layout(**PLOTLY_LAYOUT)
+    fig_scatter.update_layout(
+        title=dict(font=dict(size=18, weight="bold")),
+        height=400,
+    )
+    fig_scatter.update_coloraxes(showscale=False)
+
+    # ── Render Chart 3 & 4 side by side ──────────────────────────────────────
+    ch3, ch4 = st.columns(2, gap="medium")
+    with ch3:
+        st.plotly_chart(fig_dist,    use_container_width=True, config={"displayModeBar": False})
+    with ch4:
+        st.plotly_chart(fig_scatter, use_container_width=True, config={"displayModeBar": False})
+
+    # ── Footer note ───────────────────────────────────────────────────────────
+    st.markdown(f"""
+    <div style="
+        margin-top: 20px;
+        padding: 16px 22px;
+        border: 1px solid #222222;
+        border-left: 3px solid #4a90e2;
+        border-radius: 4px;
+        background: #111111;
+        font-size: .9rem;
+        color: #c0c0c0;
+        line-height: 1.8;
+        font-weight: 500;
+    ">
+        Dataset: <strong style="color:#ffffff; font-weight:700;">rumah123_yogya_unfiltered.csv</strong> &nbsp;&mdash;&nbsp;
+        <strong style="color:#ffffff; font-weight:700;">{total_listing:,}</strong> listing valid setelah pembersihan data &nbsp;&bull;&nbsp;
+        Outlier harga > persentil 99 dihapus untuk visualisasi yang representatif.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
